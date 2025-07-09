@@ -2,6 +2,7 @@ import { collect } from 'domyno';
 
 import { map } from '../../../utils/map.js';
 import { pipe } from '../../../utils/pipe.js';
+import type { Fn } from '../../../utils/pipe.js';
 
 const BACKTICKS = '```';
 
@@ -18,14 +19,14 @@ const mapTransform = map<ResourceDescription, string>(
 ${BACKTICKS}
 ${description}
 ${BACKTICKS}
-`.trim()
+`.trim(),
 );
 
-const transform = pipe<Iterable<ResourceDescription>, string>([
+const transform: Fn<Iterable<ResourceDescription>, string> = pipe(
   mapTransform,
   collect,
-  (arr: string[]) => arr.join('\n'),
-]);
+  arr => arr.join('\n'),
+);
 
 const resources = [
   {

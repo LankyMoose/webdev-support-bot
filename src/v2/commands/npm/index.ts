@@ -1,16 +1,16 @@
 import type { User } from '@sentry/types';
 import { formatDistanceToNow } from 'date-fns';
-import {
+import type {
   EmbedField,
   Client,
   CommandInteraction,
   ButtonInteraction,
   ComponentType,
-  ApplicationCommandOptionType,
   StringSelectMenuInteraction,
   MessageActionRowComponentBuilder,
 } from 'discord.js';
 import {
+  ApplicationCommandOptionType,
   EmbedBuilder,
   Collection,
   ActionRowBuilder,
@@ -40,26 +40,28 @@ const list = new (Intl as any).ListFormat();
 const fetch: typeof getData = getData;
 const formatDateFromNow: typeof formatDistanceToNow = formatDistanceToNow;
 
-const getFirstTenResults = pipe<Iterable<NPMResponse>, NPMEmbed[]>([
-  take<NPMResponse>(10),
-  map(({ name, date, description, links, publisher, maintainers }) => ({
-    author: {
-      name: publisher.username,
-      // icon_url: publisher.avatars.small,
-      url: `https://www.npmjs.com/~${publisher.username}`,
-    },
-    description,
-    externalUrls: {
-      homepage: links.homepage,
-      repository: links.repository,
-    },
-    lastUpdate: `${formatDateFromNow(new Date(date))} ago`,
-    maintainers: maintainers.length,
-    name,
-    url: links.npm,
-  })),
-  collect,
-]);
+const getFirstTenResults = pipe(
+  take(10),
+  map<NPMResponse, NPMEmbed>(
+    ({ name, date, description, links, publisher, maintainers }) => ({
+      author: {
+        name: publisher.username,
+        // icon_url: publisher.avatars.small,
+        url: `https://www.npmjs.com/~${publisher.username}`,
+      },
+      description,
+      externalUrls: {
+        homepage: links.homepage,
+        repository: links.repository,
+      },
+      lastUpdate: `${formatDateFromNow(new Date(date))} ago`,
+      maintainers: maintainers.length,
+      name,
+      url: links.npm,
+    })
+  ),
+  collect
+);
 
 // msg: Message, searchTerm: string
 const handleNpmCommand = async (
@@ -95,25 +97,26 @@ const handleNpmCommand = async (
     const collection = new Collection(
       firstTenResults.map(item => [item.url, item])
     );
-    const selectRow = new ActionRowBuilder<MessageActionRowComponentBuilder>().addComponents(
-      new StringSelectMenuBuilder()
-        .setCustomId(`npm🤔${msgId}🤔select`)
-        .setPlaceholder('Pick one option to display')
-        .setMinValues(1)
-        .setMaxValues(1)
-        .addOptions(
-          firstTenResults.map(({ name, description, url }) => ({
-            label: clampLengthMiddle(name, 25),
-            description: clampLength(description, 50),
-            value: url,
-          }))
-        )
-    );
+    const selectRow =
+      new ActionRowBuilder<MessageActionRowComponentBuilder>().addComponents(
+        new StringSelectMenuBuilder()
+          .setCustomId(`npm🤔${msgId}🤔select`)
+          .setPlaceholder('Pick one option to display')
+          .setMinValues(1)
+          .setMaxValues(1)
+          .addOptions(
+            firstTenResults.map(({ name, description, url }) => ({
+              label: clampLengthMiddle(name, 25),
+              description: clampLength(description, 50),
+              value: url,
+            }))
+          )
+      );
 
-    const int = (await interaction.editReply({
+    const int = await interaction.editReply({
       content: 'Please pick 1 option below to display',
       components: [selectRow],
-    }))
+    });
 
     const interactionCollector = int.createMessageComponentCollector<
       ComponentType.Button | ComponentType.StringSelect
@@ -201,12 +204,10 @@ const createNPMEmbed = (
       inline: true,
     })
     .setURL(url)
-    .setFooter(
-      {
-        text: `requested by ${user.username}`,
-        iconURL: user.avatarURL({ size: 64, format: 'webp' })
-      }
-    )
+    .setFooter({
+      text: `requested by ${user.username}`,
+      iconURL: user.avatarURL({ size: 64, format: 'webp' }),
+    })
     .setColor(0xcb_37_37);
 
 /**
@@ -218,37 +219,37 @@ const createFields = (
   externalUrls: { homepage: string; repository: string },
   maintainers: number
 ): EmbedField[] => [
-    {
-      inline: false,
-      name: 'How to install',
-      value: createMarkdownBash(
-        [`npm install ${name}`, '# Or', `yarn add ${name}`].join('\n')
-      ),
-    },
-    ...Object.entries(externalUrls)
-      .filter(([, url]) => !!url)
-      .map(([host, url]) => {
-        const markdownTitle = sanitizePackageLink(host, url);
+  {
+    inline: false,
+    name: 'How to install',
+    value: createMarkdownBash(
+      [`npm install ${name}`, '# Or', `yarn add ${name}`].join('\n')
+    ),
+  },
+  ...Object.entries(externalUrls)
+    .filter(([, url]) => !!url)
+    .map(([host, url]) => {
+      const markdownTitle = sanitizePackageLink(host, url);
 
-        const emoji = host === 'homepage' ? website : false;
+      const emoji = host === 'homepage' ? website : false;
 
-        return {
-          inline: true,
-          name: emoji ? `${emoji} ${host}` : host,
-          value: createMarkdownLink(
-            markdownTitle.endsWith('/')
-              ? markdownTitle.slice(0, Math.max(0, markdownTitle.length - 1))
-              : markdownTitle,
-            url
-          ),
-        };
-      }),
-    {
-      inline: true,
-      name: `${language} maintainers`,
-      value: maintainers.toString(),
-    },
-  ];
+      return {
+        inline: true,
+        name: emoji ? `${emoji} ${host}` : host,
+        value: createMarkdownLink(
+          markdownTitle.endsWith('/')
+            ? markdownTitle.slice(0, Math.max(0, markdownTitle.length - 1))
+            : markdownTitle,
+          url
+        ),
+      };
+    }),
+  {
+    inline: true,
+    name: `${language} maintainers`,
+    value: maintainers.toString(),
+  },
+];
 
 const sanitizePackageLink = (host: string, link: string) => {
   const { protocol, pathname } = new URL(link);

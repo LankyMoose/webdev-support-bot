@@ -1,4 +1,8 @@
-import { ButtonStyle, CommandInteraction, MessageActionRowComponentBuilder } from 'discord.js';
+import type {
+  CommandInteraction,
+  MessageActionRowComponentBuilder,
+} from 'discord.js';
+import { ButtonStyle } from 'discord.js';
 import { ActionRowBuilder, ButtonBuilder, EmbedBuilder } from 'discord.js';
 import { chunk } from 'domyno';
 
@@ -13,18 +17,20 @@ const generateButtons = (roles: typeof ROLES | typeof NOTIFY_ROLES) =>
       .setCustomId(`roles🤔toggle🤔${item.name}`)
       .setLabel(item.name)
       .setStyle(ButtonStyle.Secondary)
-      .setEmoji(item.emoji)
+      .setEmoji(item.emoji),
   );
-const chunkAndRowify = pipe<
-  Iterable<ButtonBuilder>,
-  Iterable<ActionRowBuilder<MessageActionRowComponentBuilder>>
->([
-  chunk(5),
-  map((buttonBuilders: ButtonBuilder[]) => new ActionRowBuilder<MessageActionRowComponentBuilder>().addComponents(...buttonBuilders))
-]);
+
+const chunkAndRowify = pipe(
+  chunk<ButtonBuilder>(5),
+  map(x =>
+    new ActionRowBuilder<MessageActionRowComponentBuilder>().addComponents(
+      ...x,
+    ),
+  ),
+);
 
 export async function setupRoles(
-  interaction: CommandInteraction
+  interaction: CommandInteraction,
 ): Promise<void> {
   await interaction.deferReply({ ephemeral: true });
 
@@ -35,19 +41,19 @@ export async function setupRoles(
       new EmbedBuilder()
         .setTitle('Assign Yourself Roles Below')
         .setDescription(
-          `Click on the reaction that corresponds with the role you're interested in.`
+          `Click on the reaction that corresponds with the role you're interested in.`,
         )
         .setColor('Green'),
       new EmbedBuilder()
         .setColor('Green')
         .setTitle('⭐ IMPORTANT: Access Role-Locked Channels')
         .setDescription(
-          'In order to see any general channel, you must have at least one role from the list below (excluding Community Announcement roles). If you would like access to a technology-specific channel, you must add that role to your profile. Add as many roles as you like.'
+          'In order to see any general channel, you must have at least one role from the list below (excluding Community Announcement roles). If you would like access to a technology-specific channel, you must add that role to your profile. Add as many roles as you like.',
         ),
       new EmbedBuilder()
         .setColor('Yellow')
         .setDescription(
-          `:warning: Note: You can add and remove roles faster using the \`/roles change\` command`
+          `:warning: Note: You can add and remove roles faster using the \`/roles change\` command`,
         ),
     ],
     components: [
